@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Chats - ChatApp{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="users-wrapper">
+        <!-- Header -->
+        <div class="users-header glass-card">
+            <div class="users-header-content">
+                <div>
+                    <h1 class="users-title">
+                        <i class="bi bi-chat-square-text-fill"></i> Messages
+                    </h1>
+                    <p class="users-subtitle">Select a conversation to start chatting</p>
+                </div>
+                <div class="search-box">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="user-search" class="form-control" placeholder="Search users..."
+                        autocomplete="off">
+                </div>
+            </div>
+        </div>
+
+        <!-- User List -->
+        <div class="users-list glass-card">
+            {% if user_data %}
+            {% for item in user_data %}
+            <a href="{% url 'chat:chat_room' item.user.id %}" class="user-item" id="user-{{ item.user.id }}">
+                <div class="user-avatar-wrapper">
+                    <div class="user-avatar">
+                        {{ item.user.username|first|upper }}
+                    </div>
+                    <span class="status-dot {% if item.user.is_online %}online{% else %}offline{% endif %}"
+                        title="{% if item.user.is_online %}Online{% else %}Last seen {{ item.user.last_seen|timesince }} ago{% endif %}">
+                    </span>
+                </div>
+                <div class="user-info">
+                    <div class="user-info-top">
+                        <span class="user-display-name">{{ item.user.username }}</span>
+                        {% if item.last_message %}
+                        <span class="message-time">{{ item.last_message.timestamp|timesince }} ago</span>
+                        {% endif %}
+                    </div>
+                    <div class="user-info-bottom">
+                        {% if item.last_message %}
+                        <span class="last-message">
+                            {% if item.last_message.sender == request.user %}
+                            <span class="read-receipt-small">
+                                {% if item.last_message.is_read %}✓✓{% else %}✓{% endif %}
+                            </span>
+                            {% endif %}
+                            {{ item.last_message.content|truncatechars:45 }}
+                        </span>
+                        {% else %}
+                        <span class="last-message no-messages">No messages yet</span>
+                        {% endif %}
+
+                        {% if item.unread_count > 0 %}
+                        <span class="unread-badge">{{ item.unread_count }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-people"></i>
+                <h3>No users yet</h3>
+                <p>Invite your friends to join ChatApp!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Client-side user search filter
+    document.getElementById('user-search').addEventListener('input', function () {
+        const query = this.value.toLowerCase();
+        document.querySelectorAll('.user-item').forEach(item => {
+            const name = item.querySelector('.user-display-name').textContent.toLowerCase();
+            item.style.display = name.includes(query) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}
