@@ -22,7 +22,7 @@ def register_view(request):
             messages.success(request, f'Welcome, {user.username}! Your account has been created.')
             return redirect('chat:user_list')
         else:
-            messages.error(request, 'Please correct the errors below.')
+            pass  # Form errors are shown inline
     else:
         form = UserRegistrationForm()
 
@@ -44,7 +44,7 @@ def login_view(request):
             messages.success(request, f'Welcome back, {user.username}!')
             return redirect('chat:user_list')
         else:
-            messages.error(request, 'Invalid email or password.')
+            pass  # Form errors are shown inline
     else:
         form = UserLoginForm()
 
