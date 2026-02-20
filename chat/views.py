@@ -8,6 +8,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Max, Count, Subquery, OuterRef
 from accounts.models import CustomUser
 from .models import Message
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+import json
+from django.utils import timezone
 
 
 @login_required
@@ -93,3 +97,62 @@ def chat_room_view(request, user_id):
         'current_user_id': request.user.id,
     }
     return render(request, 'chat/chat.html', context)
+
+# --- API VIEWS FOR NON-WEBSOCKET CHAT ---
+
+@login_required
+@require_POST
+def send_message_api(request):
+    try:
+        data = json.loads(request.body)
+        receiver_id = data.get('receiver_id')
+        content = data.get('message')
+
+        if not content or not receiver_id:
+            return JsonResponse({'status': 'error', 'message': 'Missing data'}, status=400)
+
+        receiver = get_object_or_404(CustomUser, id=receiver_id)
+        
+        message = Message.objects.create(
+            sender=request.user,
+            receiver=receiver,
+            content=content
+        )
+
+        return JsonResponse({
+            'status': 'success',
+            'message': {
+                'id': message.id,
+                'content': message.content,
+                'timestamp': message.timestamp.strftime('%b %d, %Y %I:%M %p'),
+                'sender_id': message.sender.id
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def get_new_messages_api(request, other_user_id):
+    other_user = get_object_or_404(CustomUser, id=other_user_id)
+    
+    # Get unread messages from other user
+    new_messages = Message.objects.filter(
+        sender=other_user,
+        receiver=request.user,
+        is_read=False
+    ).order_by('timestamp')
+    
+    messages_data = []
+    for msg in new_messages:
+        messages_data.append({
+            'type': 'chat_message',
+            'message_id': msg.id,
+            'message': msg.content,
+            'sender_id': msg.sender.id,
+            'timestamp': msg.timestamp.strftime('%b %d, %Y %I:%M %p'),
+        })
+        # Mark as read immediately for this simple implementation
+        msg.is_read = True
+        msg.save()
+        
+    return JsonResponse({'messages': messages_data})
